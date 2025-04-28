@@ -61,13 +61,23 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 * [ ] **Task 5.6:** Optionally, trigger the grouping algorithm (calling the Supabase Function or JS logic) for newly imported users from the client-side after successful import.
 * [ ] **Task 5.7:** Provide feedback to the admin on import success/failure/rows processed/skipped directly in the UI.
 
-**Phase 6: Admin View & Management (Est. 0.5 days - *Basic version*)**
+**Phase 6: Admin View & Management (Est. 0.5-1 day - *Refined*)**
 
-* [ ] **Task 6.1:** Create a basic Admin Page UI (e.g., `/dashboard` or `/dashboard/admin`). Secure it using Supabase Auth and RLS, or simple password protection if Auth is too complex for the timeframe. Implement the Shadcn UI Sidebar layout for the dashboard.
-* [ ] **Task 6.2:** Fetch and display the list of all *eligible* registrants (age >= 12) directly from Supabase using the client library in a component on the admin page/dashboard. Use Shadcn/ui Table. Ensure RLS allows admin reads.
-* [ ] **Task 6.3:** Add client-side filtering/tabs to view participants by assigned group on the admin page/dashboard. Fetch data accordingly from Supabase using the client library.
-* [ ] **Task 6.4:** Add buttons/links on the admin page/dashboard to trigger Export and Import client-side functions.
-* [ ] **Task 6.5:** (Optional) Add a button on the admin page/dashboard to manually trigger the grouping process (calling the relevant client-side function or Supabase Function).
+* [ ] **Task 6.1:** Create Dashboard Structure & Sidebar (Update `components/dashboard-sidebar.tsx` with new routes: `/dashboard`, `/dashboard/register`, `/dashboard/participants`, `/dashboard/groups`). Implement `app/dashboard/layout.tsx`. (Partially done)
+* [ ] **Task 6.2:** Create Dashboard Overview Page (`/dashboard/page.tsx`).
+    * Fetch basic counts (total registrants >= 12, count per group).
+    * Display these counts (e.g., using Shadcn Cards).
+* [ ] **Task 6.3:** Create Manage Participants Page (`/dashboard/participants/page.tsx`).
+    * Move existing registrant fetching logic (from old `/admin`) here.
+    * Display the list of all *eligible* registrants (age >= 12) using Shadcn Table.
+* [ ] **Task 6.4:** Create View Groups Page (`/dashboard/groups/page.tsx`).
+    * Implement filtering/tabs/sections to view participants by assigned group (Groups 1-5, and maybe 'Unassigned').
+    * Fetch data filtered by group (`.eq('assigned_group', selectedGroup)`) or fetch all and filter client-side.
+* [ ] **Task 6.5:** Add Admin Action Buttons (on relevant pages, e.g., `/dashboard/participants`).
+    * Button to trigger Export (Phase 4).
+    * Button to trigger Import (Phase 5).
+    * Button to manually trigger group assignment for all ungrouped participants.
+* [ ] **Task 6.6:** (Optional) Secure the `/dashboard` routes (e.g., using Supabase Auth + RLS, or simple password protection if time-constrained).
 
 **Phase 7: Testing & Deployment (Est. 0.5 days)**
 
