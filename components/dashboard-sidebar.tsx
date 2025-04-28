@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   // SidebarHeader // Optional header
 } from "@/components/ui/sidebar"; // Make sure path is correct
-import { Home, UserPlus, Users, Settings } from "lucide-react";
+import { Home, UserPlus, Users, KanbanSquare } from "lucide-react";
 import { cn } from "@/lib/utils"; // Assuming you have this from shadcn setup
 
 // Menu items definition
@@ -21,7 +21,7 @@ export const menuItems = [
     groupLabel: "Management",
     items: [
       {
-        title: "Overview", // Changed from Home for clarity in dashboard context
+        title: "Overview",
         href: "/dashboard",
         icon: Home,
       },
@@ -31,11 +31,15 @@ export const menuItems = [
         icon: UserPlus,
       },
       {
-        title: "View Participants", // Placeholder for admin view
-        href: "/dashboard/admin", // Example admin route
+        title: "Manage Participants",
+        href: "/dashboard/participants",
         icon: Users,
       },
-      // Add more admin links like export/import later
+      {
+        title: "View Groups",
+        href: "/dashboard/groups",
+        icon: KanbanSquare,
+      }
     ],
   },
   // You could add more groups here if needed
