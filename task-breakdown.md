@@ -83,7 +83,7 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 
 * [ ] **Task 7.1:** End-to-end testing: Registration (including age < 12 rejection), direct Supabase interactions, grouping, export, import (if applicable). Check RLS policies thoroughly.
 * [ ] **Task 7.2:** Test responsiveness.
-* [ ] **Task 7.3:** Deploy the application (e.g., to Vercel, ensuring Supabase environment variables are set correctly for the *client-side* bundle).
+* [ ] **Task 7.3:** Deploy the application (e.g., to Vercel, ensuring Supabase environment variables are set correctly for the *client-side* bundle). (In Progress)
 * [ ] **Task 7.4:** Final testing on the deployed environment.
 
 **Notes:**

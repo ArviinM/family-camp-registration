@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image'; // Import next/image
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from '../src/lib/supabase/client'; // Assuming default alias setup
@@ -13,8 +13,6 @@ import {
   MapPin, Flame, Users, Tent, Sparkles, Info, ScanLine, ExternalLink // Added icons
 } from 'lucide-react';
 import { toast } from 'sonner';
-// We'll need a new export function later
-// import { exportGroupData } from '@/lib/excelUtils/export'; // Placeholder
 
 type RegistrantRow = Database['public']['Tables']['registrants']['Row'];
 
