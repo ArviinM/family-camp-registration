@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       registrants: {
         Row: {
           age: number
@@ -50,7 +74,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_group_to_registrant: {
+        Args: { registrant_id_to_assign: number }
+        Returns: undefined
+      }
+      get_age_bracket: {
+        Args: { registrant_age: number }
+        Returns: string
+      }
     }
     Enums: {
       church_location_enum:
