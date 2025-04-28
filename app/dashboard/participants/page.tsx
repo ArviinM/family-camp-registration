@@ -36,23 +36,24 @@ export default function ManageParticipantsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // State for selected file
   const [isProcessingImport, setIsProcessingImport] = useState(false); // State for import processing
   const [importResult, setImportResult] = useState<ImportResult | null>(null); // State for import results
+  const [isAssigningGroups, setIsAssigningGroups] = useState(false); // State for manual group assignment
 
   const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
   const { user, isAdmin, loading: authLoading } = useAuth(); // Get auth state and isAdmin flag
 
   // Define fetchRegistrants within component scope
   const fetchRegistrants = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Task 6.2: Fetch all *eligible* registrants (age >= 12)
-      const { data, error: fetchError } = await supabase
-        .from('registrants')
-        .select('*')
-        .gte('age', 12) // Filter for age 12 and up
-        .order('created_at', { ascending: false }); // Order by creation time
+      setLoading(true);
+      setError(null);
+      try {
+        // Task 6.2: Fetch all *eligible* registrants (age >= 12)
+        const { data, error: fetchError } = await supabase
+          .from('registrants')
+          .select('*')
+          .gte('age', 12) // Filter for age 12 and up
+          .order('created_at', { ascending: false }); // Order by creation time
 
-      if (fetchError) {
+        if (fetchError) {
         // Handle RLS errors potentially more gracefully
         if (fetchError.code === '42501') { // permission denied
           console.error("RLS Error: Permission denied fetching registrants.", fetchError);
@@ -60,25 +61,25 @@ export default function ManageParticipantsPage() {
         } else {
           throw fetchError;
         }
-      }
+        }
 
-      setRegistrants(data || []);
-    } catch (err: any) {
-      console.error("Error fetching registrants:", err);
+        setRegistrants(data || []);
+      } catch (err: any) {
+        console.error("Error fetching registrants:", err);
       // Avoid setting generic error if RLS error was already set
       if (!error) {
         setError(err.message || "Failed to fetch registrants.");
       }
-      setRegistrants([]);
-    } finally {
-      setLoading(false);
-    }
+        setRegistrants([]);
+      } finally {
+        setLoading(false);
+      }
   };
 
   useEffect(() => {
     // Only fetch if user is loaded and authenticated (session check might be redundant with middleware)
     if (!authLoading && user) {
-      fetchRegistrants();
+    fetchRegistrants();
     }
     // If auth is done loading and there's no user, clear data/stop loading
     if (!authLoading && !user) {
@@ -93,9 +94,30 @@ export default function ManageParticipantsPage() {
       toast.error("Only admins can trigger group assignments.");
       return;
     }
-    alert("Manual group assignment trigger not implemented yet.");
-    // TODO: Implement Task 6.5 - Call grouping logic for all ungrouped
-    // e.g., supabase.rpc('assign_all_ungrouped_registrants') or client-side loop
+    
+    setIsAssigningGroups(true);
+    toast.info("Attempting to assign groups to all eligible, unassigned participants...");
+
+    try {
+      const { data, error } = await supabase.rpc('assign_all_ungrouped_registrants');
+
+      if (error) {
+        console.error('Supabase manual group assignment error:', error);
+        throw new Error(`Failed to trigger group assignment: ${error.message}`);
+      }
+
+      console.log(`Manual assignment attempted for ${data} participants.`);
+      toast.success(`Group assignment process finished. Attempted to assign ${data ?? 0} participants. Refreshing list...`);
+
+      // Refresh the participant list to show updated group assignments
+      await fetchRegistrants();
+
+    } catch (err: any) {
+      console.error("Error during manual group assignment:", err);
+      toast.error(err.message || "An unexpected error occurred during group assignment.");
+    } finally {
+      setIsAssigningGroups(false);
+    }
   };
 
   const handleExport = async () => {
@@ -184,26 +206,29 @@ export default function ManageParticipantsPage() {
     <div className="py-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
+           <div>
             <CardTitle className="text-2xl font-bold">Manage Participants</CardTitle>
             <CardDescription>View, export, and import eligible camp registrants (Age 12+).</CardDescription>
-          </div>
+           </div>
           {/* Conditionally render buttons based on admin role */}
           {isAdmin && (
-            <div className="flex space-x-2">
+           <div className="flex flex-wrap gap-2">
               {/* Import Button with Dialog */}
               <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Upload className="mr-2 h-4 w-4" /> Import
-                  </Button>
+                </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>Import Participants from Excel</DialogTitle>
                     <DialogDescription>
-                      Download the template, fill it out (ensure Location is from dropdown), and upload.
-                      Only registrants aged 12+ will be imported.
+                      Download the template, fill it out, and upload the completed file.
+                      Ensure data starts on row 2.
+                      Important: Age must be 12 or older. Gender must be Male or Female.
+                      Location must be selected from the dropdown list provided in the template.
+                      Only registrants meeting these criteria will be imported.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -283,11 +308,21 @@ export default function ManageParticipantsPage() {
                   <Download className="mr-2 h-4 w-4" />
                 )}
                 {isExporting ? 'Exporting...' : 'Export'}
-              </Button>
+                </Button>
               {/* Assign Groups Button */}
-              <Button variant="outline" size="sm" onClick={handleManualGroupTrigger}>
-                <Users className="mr-2 h-4 w-4" /> Assign Groups
-              </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleManualGroupTrigger}
+                  disabled={isAssigningGroups || loading || authLoading}
+                >
+                  {isAssigningGroups ? (
+                    <Users className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Users className="mr-2 h-4 w-4" />
+                  )}
+                  {isAssigningGroups ? 'Assigning...' : 'Assign Groups'}
+                </Button>
             </div>
           )}
         </CardHeader>
