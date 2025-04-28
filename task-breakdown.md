@@ -34,49 +34,49 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
     * **Recommended:** As a Supabase Database Function (PL/pgSQL). This keeps logic close to data and can be called securely via `supabase.rpc()`.
     * *Alternative:* As a JavaScript function within Next.js (e.g., in `/utils` or `/lib/supabase`). Requires fetching necessary data (like current group counts) from Supabase first.
 * [ ] **Task 3.4:** Integrate Grouping Logic:
-    * *Option A (Trigger from Client):* After successful registration insert (Task 2.4), call the Supabase Function (e.g., using `supabase.rpc('assign_group', { registrant_id: new_id })`) or the JS function to determine the group and update the registrant's record (`supabase.from('registrants').update(...)`). Ensure RLS allows updates if triggered directly.
-    * *Option B (Manual Trigger):* Create an admin button that triggers a client-side function to run the grouping logic (calling the Supabase Function or JS implementation) on all *ungrouped, eligible* registrants.
-* [ ] **Task 3.5:** Test the grouping logic with sample data.
+    * *Option A (Trigger from Client):* After successful registration insert (Task 2.4), call the Supabase Function (e.g., using `supabase.rpc('assign_group', { registrant_id: new_id })`) or the JS function to determine the group and update the registrant's record (`supabase.from('registrants').update(...)`). Ensure RLS allows updates if triggered directly. **(Note: Individual assignment on insert not currently implemented)**
+    * *Option B (Manual Trigger):* Create an admin button that triggers a client-side function to run the grouping logic (calling the Supabase Function or JS implementation) on all *ungrouped, eligible* registrants. **(Implemented: Uses `supabase.rpc('assign_all_ungrouped_registrants')`)**
+* [X] **Task 3.5:** Test the grouping logic with sample data.
 
 **Phase 4: Data Export Feature (Est. 0.5 days)**
 
-* [ ] **Task 4.1:** Create a client-side function (e.g., in an admin component or utils) triggered by an admin button.
-* [ ] **Task 4.2:** Implement logic within the function to fetch all eligible registrants (age >= 12) directly from Supabase using the client library (`supabase.from('registrants').select('*').gte('age', 12)`). Ensure RLS allows admin reads.
-* [ ] **Task 4.3:** Use ExcelJS *client-side* to generate an Excel file buffer/blob from the fetched data.
-* [ ] **Task 4.4:** Trigger a file download in the browser using the generated blob and appropriate file naming.
-* [ ] **Task 4.5:** Add a button/link on the admin page/dashboard section to trigger the export function.
+* [X] **Task 4.1:** Create a client-side function (e.g., in an admin component or utils) triggered by an admin button.
+* [X] **Task 4.2:** Implement logic within the function to fetch all eligible registrants (age >= 12) directly from Supabase using the client library (`supabase.from('registrants').select('*').gte('age', 12)`). Ensure RLS allows admin reads.
+* [X] **Task 4.3:** Use ExcelJS *client-side* to generate an Excel file buffer/blob from the fetched data.
+* [X] **Task 4.4:** Trigger a file download in the browser using the generated blob and appropriate file naming.
+* [X] **Task 4.5:** Add a button/link on the admin page/dashboard section to trigger the export function.
 * [ ] **Task 4.6:** Implement separate exports per group (modify Supabase query to filter by `assigned_group`).
 
 **Phase 5: Data Import Feature (Est. 1 day - *Lower Priority*)**
 
-* [ ] **Task 5.1:** Design the expected Excel file structure/template.
-* [ ] **Task 5.2:** Create an Admin Page/Section UI (`/dashboard/admin` or similar) for file upload (e.g., using `<input type="file">`).
-* [ ] **Task 5.3:** Create a client-side function to handle the file selection and processing.
-* [ ] **Task 5.4:** Implement logic within the client-side function to:
+* [X] **Task 5.1:** Design the expected Excel file structure/template.
+* [X] **Task 5.2:** Create an Admin Page/Section UI (`/dashboard/participants`) for file upload (e.g., using `<input type="file">` within a Dialog).
+* [X] **Task 5.3:** Create a client-side function to handle the file selection and processing (`processRegistrantImport` utility).
+* [X] **Task 5.4:** Implement logic within the client-side function/utility to:
     * Read the selected file using the browser's File API.
     * Parse the Excel file using ExcelJS (client-side).
     * Iterate through rows, validating data and **filtering out rows where age < 12.**
     * Prepare an array of valid registrant objects.
-* [ ] **Task 5.5:** Perform batch insert/upsert directly to Supabase using the client library (`supabase.from('registrants').upsert(validRegistrants)`). Handle potential errors and limits. Ensure RLS allows admin inserts/upserts.
-* [ ] **Task 5.6:** Optionally, trigger the grouping algorithm (calling the Supabase Function or JS logic) for newly imported users from the client-side after successful import.
-* [ ] **Task 5.7:** Provide feedback to the admin on import success/failure/rows processed/skipped directly in the UI.
+* [X] **Task 5.5:** Perform batch insert/upsert directly to Supabase using the client library (`supabase.from('registrants').upsert(validRegistrants)`). Handle potential errors and limits. Ensure RLS allows admin inserts/upserts.
+* [X] **Task 5.6:** Trigger the grouping algorithm (`assign_all_ungrouped_registrants` RPC) for newly imported/upserted users from the client-side after successful import.
+* [X] **Task 5.7:** Provide feedback to the admin on import success/failure/rows processed/skipped directly in the UI.
 
 **Phase 6: Admin View & Management (Est. 0.5-1 day - *Refined*)**
 
-* [ ] **Task 6.1:** Create Dashboard Structure & Sidebar (Update `components/dashboard-sidebar.tsx` with new routes: `/dashboard`, `/dashboard/register`, `/dashboard/participants`, `/dashboard/groups`). Implement `app/dashboard/layout.tsx`. (Partially done)
-* [ ] **Task 6.2:** Create Dashboard Overview Page (`/dashboard/page.tsx`).
+* [X] **Task 6.1:** Create Dashboard Structure & Sidebar (Update `components/dashboard-sidebar.tsx` with new routes: `/dashboard`, `/dashboard/register`, `/dashboard/participants`, `/dashboard/groups`). Implement `app/dashboard/layout.tsx`. (Partially done)
+* [X] **Task 6.2:** Create Dashboard Overview Page (`/dashboard/page.tsx`).
     * Fetch basic counts (total registrants >= 12, count per group).
     * Display these counts (e.g., using Shadcn Cards).
-* [ ] **Task 6.3:** Create Manage Participants Page (`/dashboard/participants/page.tsx`).
+* [X] **Task 6.3:** Create Manage Participants Page (`/dashboard/participants/page.tsx`).
     * Move existing registrant fetching logic (from old `/admin`) here.
     * Display the list of all *eligible* registrants (age >= 12) using Shadcn Table.
 * [ ] **Task 6.4:** Create View Groups Page (`/dashboard/groups/page.tsx`).
     * Implement filtering/tabs/sections to view participants by assigned group (Groups 1-5, and maybe 'Unassigned').
     * Fetch data filtered by group (`.eq('assigned_group', selectedGroup)`) or fetch all and filter client-side.
-* [ ] **Task 6.5:** Add Admin Action Buttons (on relevant pages, e.g., `/dashboard/participants`).
+* [X] **Task 6.5:** Add Admin Action Buttons (on relevant pages, e.g., `/dashboard/participants`).
     * Button to trigger Export (Phase 4).
     * Button to trigger Import (Phase 5).
-    * Button to manually trigger group assignment for all ungrouped participants.
+    * Button to manually trigger group assignment for all ungrouped participants (using `assign_all_ungrouped_registrants` RPC).
 * [ ] **Task 6.6:** (Optional) Secure the `/dashboard` routes (e.g., using Supabase Auth + RLS, or simple password protection if time-constrained).
 
 **Phase 7: Testing & Deployment (Est. 0.5 days)**

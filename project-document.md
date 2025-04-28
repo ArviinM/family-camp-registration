@@ -43,14 +43,14 @@ This document outlines the plan for developing a web-based registration system f
 * **Data Import (Admin):**
     * Upload an Excel file (`.xlsx`) with pre-existing member data.
     * Map Excel columns to database fields.
-    * Batch registration and grouping of imported data.
+    * Batch registration and grouping of imported data (with automatic trigger for group assignment).
 * **Data Export (Admin):**
     * Export master registration list to Excel.
     * Export individual group lists to Excel.
 * **Admin Dashboard (Basic):**
     * View list of all registrants.
     * View participants assigned to each of the 5 groups.
-    * Manually trigger the grouping process (if not fully automated on registration).
+    * Manually trigger the grouping process for all eligible, unassigned participants.
     * Access Import/Export functions.
 
 **5. Technology Stack**
