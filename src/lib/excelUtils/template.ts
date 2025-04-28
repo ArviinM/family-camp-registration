@@ -31,7 +31,7 @@ export const downloadImportTemplate = async (): Promise<void> => {
     // We apply it to a large range assuming many potential entries.
     // Note: Directly setting validation on the column object seems less reliable across Excel versions
     // than applying it to a range of cells.
-    for (let i = 2; i <= 1000; i++) { // Apply to first 1000 data rows
+    for (let i = 2; i <= 3; i++) { // Apply to first 1000 data rows
         const cell = sheet.getCell(`D${i}`);
         cell.dataValidation = {
             type: 'list',
@@ -47,14 +47,14 @@ export const downloadImportTemplate = async (): Promise<void> => {
     // sheet.getColumn('D').dataValidation = { ... };
 
     // Add a note in the template below the headers
-    sheet.getRow(2).values = []; // Ensure row 2 is clear before merging/adding notes if needed
-    sheet.mergeCells('A3:D3');
-    const noteCell = sheet.getCell('A3');
-    noteCell.value =
-      'Notes: Fill data starting from row 2. Age must be 12 or older. Gender should be Male or Female. Location must be selected from the dropdown list.';
-    noteCell.font = { italic: true, size: 9 };
-    noteCell.alignment = { wrapText: true, vertical: 'top' };
-    sheet.getRow(3).height = 30; // Increase row height for note visibility
+    // sheet.getRow(2).values = []; // Ensure row 2 is clear before merging/adding notes if needed
+    // sheet.mergeCells('A3:D3');
+    // const noteCell = sheet.getCell('A3');
+    // noteCell.value =
+    //   'Notes: Fill data starting from row 2. Age must be 12 or older. Gender should be Male or Female. Location must be selected from the dropdown list.';
+    // noteCell.font = { italic: true, size: 9 };
+    // noteCell.alignment = { wrapText: true, vertical: 'top' };
+    // sheet.getRow(3).height = 30; // Increase row height for note visibility
 
 
     const buffer = await workbook.xlsx.writeBuffer();

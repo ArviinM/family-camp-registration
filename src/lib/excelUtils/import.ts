@@ -17,6 +17,16 @@ export interface ImportResult {
   errors: string[];
 }
 
+// Define the expected headers exactly as generated in the template
+const EXPECTED_HEADERS = ['Full Name', 'Age', 'Gender', 'Location'];
+// Map headers to the keys used for data access
+const HEADER_KEY_MAP = {
+    'Full Name': 'full_name',
+    'Age': 'age',
+    'Gender': 'gender',
+    'Location': 'church_location'
+};
+
 /**
  * Reads an Excel file, validates registrant data, and upserts valid entries to Supabase.
  * @param file The Excel file object to process.
@@ -36,88 +46,91 @@ export const processRegistrantImport = async (file: File): Promise<ImportResult>
   toast.info("Starting import process...");
 
   try {
-    // --- Implement Task 5.4 & 5.5 ---
-    // 1. Read the file using ExcelJS
     const arrayBuffer = await file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
 
-    const worksheet = workbook.worksheets[0]; // Assume data is on the first sheet
+    const worksheet = workbook.worksheets[0];
     if (!worksheet) {
         throw new Error("Could not find worksheet in the uploaded file.");
     }
 
+    // --- Header Validation --- 
+    const headerRow = worksheet.getRow(1);
+    const actualHeaders = headerRow.values as string[]; // Read values from Row 1
+    
+    // Basic check: Ensure actualHeaders is an array and has expected length
+    if (!Array.isArray(actualHeaders) || actualHeaders.length < EXPECTED_HEADERS.length) {
+        throw new Error(
+            `Invalid header row. Expected ${EXPECTED_HEADERS.length} columns: [${EXPECTED_HEADERS.join(', ')}]. Found fewer columns.`
+        );
+    }
+
+    // Trim whitespace from actual headers and compare
+    const trimmedActualHeaders = actualHeaders.slice(1, EXPECTED_HEADERS.length + 1).map(h => h?.trim()); // Slice(1) because exceljs values array can be 1-indexed with a null at 0
+
+    let headersMatch = true;
+    for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
+        if (trimmedActualHeaders[i] !== EXPECTED_HEADERS[i]) {
+            headersMatch = false;
+            break;
+        }
+    }
+
+    if (!headersMatch) {
+        throw new Error(
+            `Header mismatch. Expected columns: [${EXPECTED_HEADERS.join(', ')}]. Found: [${trimmedActualHeaders.join(', ')}] in the first row. Please use the downloaded template.`
+        );
+    }
+    // --- End Header Validation ---
+
     const validRegistrants: RegistrantInsert[] = [];
     let rowCount = 0;
 
-    // Iterate over all rows that have values (starts from 1)
+    // Iterate over rows, starting from row 2 (data rows)
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
         rowCount++;
-        // Skip header row (assuming it's row 1)
+        // Skip header row (already validated)
         if (rowNumber === 1) return;
 
         result.processedRows++;
 
-        // --- Data Extraction (using header keys defined in template) ---
-        // Ensure robust access, handling potential missing cells/values
-        const fullName = row.getCell('full_name').value?.toString().trim() || '';
-        const ageValue = row.getCell('age').value;
-        const gender = row.getCell('gender').value?.toString().trim() || '';
-        const location = row.getCell('church_location').value?.toString().trim() || '';
+        // --- Data Extraction (Using Column Indices: A=1, B=2, C=3, D=4) ---
+        // This is potentially more robust if key mapping fails
+        const fullName = row.getCell(1).value?.toString().trim() || ''; // Column A
+        const ageValue = row.getCell(2).value; // Column B
+        const gender = row.getCell(3).value?.toString().trim() || ''; // Column C
+        const location = row.getCell(4).value?.toString().trim() || ''; // Column D
 
         // --- Validation ---
         let isValid = true;
         const rowErrors: string[] = [];
 
-        // Validate Full Name
-        if (!fullName) {
-            isValid = false;
-            rowErrors.push('Full Name is missing');
-        }
+        if (!fullName) { isValid = false; rowErrors.push('Full Name is missing'); }
 
-        // Validate Age
         let age: number | null = null;
         if (ageValue === null || ageValue === undefined || ageValue === '') {
-            isValid = false;
-            rowErrors.push('Age is missing');
+            isValid = false; rowErrors.push('Age is missing');
         } else {
             age = Number(ageValue);
-            if (isNaN(age) || !Number.isInteger(age)) {
-                isValid = false;
-                rowErrors.push(`Invalid age format: "${ageValue}"`);
-            } else if (age < 12) {
-                isValid = false;
-                rowErrors.push(`Age must be 12 or older, found: ${age}`);
-            }
+            if (isNaN(age) || !Number.isInteger(age)) { isValid = false; rowErrors.push(`Invalid age format: "${ageValue}"`);
+            } else if (age < 12) { isValid = false; rowErrors.push(`Age must be 12 or older, found: ${age}`); }
         }
 
-        // Validate Gender
         const validGenders = ['Male', 'Female'];
-        if (!gender) {
-            isValid = false;
-            rowErrors.push('Gender is missing');
-        } else if (!validGenders.some(g => g.toLowerCase() === gender.toLowerCase())) {
-            isValid = false;
-            rowErrors.push(`Invalid gender: "${gender}". Must be Male or Female.`);
-        }
+        if (!gender) { isValid = false; rowErrors.push('Gender is missing');
+        } else if (!validGenders.some(g => g.toLowerCase() === gender.toLowerCase())) { isValid = false; rowErrors.push(`Invalid gender: "${gender}". Must be Male or Female.`); }
 
-        // Validate Location
-        if (!location) {
-            isValid = false;
-            rowErrors.push('Location is missing');
-        } else if (!CHURCH_LOCATIONS.includes(location as any)) { // Type assertion needed if CHURCH_LOCATIONS is readonly
-            isValid = false;
-            rowErrors.push(`Invalid location: "${location}". Must match allowed values.`);
-        }
+        if (!location) { isValid = false; rowErrors.push('Location is missing');
+        } else if (!CHURCH_LOCATIONS.includes(location as any)) { isValid = false; rowErrors.push(`Invalid location: "${location}". Must match allowed values.`); }
 
         // --- Collect Valid Data ---
         if (isValid && age !== null) {
             validRegistrants.push({
                 full_name: fullName,
-                age: age, // Use the validated number
-                gender: validGenders.find(g => g.toLowerCase() === gender.toLowerCase()) || null, // Standardize case
-                church_location: location as any, // Use the validated location
-                // assigned_group will be null by default in DB or handled by trigger/RPC
+                age: age, 
+                gender: validGenders.find(g => g.toLowerCase() === gender.toLowerCase()) || null, 
+                church_location: location as any, 
             });
         } else {
             result.skippedCount++;
@@ -125,7 +138,7 @@ export const processRegistrantImport = async (file: File): Promise<ImportResult>
         }
     });
 
-    if (rowCount <= 1) { // Only header row or empty file
+    if (rowCount <= 1) { 
         throw new Error("No data rows found in the file.");
     }
 
@@ -135,9 +148,9 @@ export const processRegistrantImport = async (file: File): Promise<ImportResult>
         const { count, error: upsertError } = await supabase
             .from('registrants')
             .upsert(validRegistrants, {
-                onConflict: 'full_name', // Assuming full_name should be unique? Or another constraint?
+                // onConflict: 'full_name', // Removed: Requires a UNIQUE constraint on full_name in DB
                 // Adjust onConflict based on your actual unique constraints if any.
-                ignoreDuplicates: false, 
+                // ignoreDuplicates: false, // Removed: Only relevant with onConflict
                 count: 'exact' // Get the count of affected rows here
             });
 
@@ -150,10 +163,27 @@ export const processRegistrantImport = async (file: File): Promise<ImportResult>
         result.success = true;
         result.message = `Import finished. Processed: ${result.processedRows}, Upserted/Updated: ${result.insertedCount}, Skipped: ${result.skippedCount}.`;
 
-        // --- 7. Optional: Trigger Group Assignment for new imports ---
+        // --- Trigger Group Assignment for newly imported/updated --- 
+        if (result.insertedCount > 0) {
+             console.log(`Attempting to trigger group assignment for ${result.insertedCount} processed participants...`);
+             toast.info("Attempting automatic group assignment for imported participants...");
+             const { data: assignmentData, error: assignmentError } = await supabase.rpc('assign_all_ungrouped_registrants');
+
+             if (assignmentError) {
+                 console.error("Supabase automatic group assignment error after import:", assignmentError);
+                 // Append warning to the main success message, but don't fail the import
+                 result.message += ` Automatic group assignment failed: ${assignmentError.message}`;
+                 toast.warning(`Import succeeded, but automatic group assignment failed: ${assignmentError.message}`);
+             } else {
+                 console.log(`Automatic group assignment process triggered. Attempted: ${assignmentData ?? 0}`);
+                 toast.success(`Automatic group assignment triggered successfully. Attempted: ${assignmentData ?? 0}`);
+             }
+         }
+
+        // --- 7. Optional: Trigger Group Assignment for new imports --- (OLD COMMENT)
         // This is complex with upsert. A safer approach is manual trigger after import.
         // console.log("Group assignment for imported users needs to be triggered manually or via a separate process.");
-        toast.info("Remember to manually assign groups if needed for newly imported participants.");
+        // toast.info("Remember to manually assign groups if needed for newly imported participants.");
 
     } else {
         // No valid registrants found, but processing might have occurred
