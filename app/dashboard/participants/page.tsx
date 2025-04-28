@@ -229,7 +229,7 @@ export default function ManageParticipantsPage() {
                       Ensure data starts on row 2.
                     </DialogDescription>
                   </DialogHeader>
-                  <Alert variant="destructive" className="mt-2 mb-4">
+                  <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Important Import Rules</AlertTitle>
                     <AlertDescription>
@@ -241,7 +241,7 @@ export default function ManageParticipantsPage() {
                       </ul>
                     </AlertDescription>
                   </Alert>
-                  <div className="grid gap-4 py-4">
+                  <div className="grid gap-4 py-4 -mt-2">
                     {/* Download Template Button */}
                     <Button variant="secondary" onClick={handleDownloadTemplate}>
                       <Download className="mr-2 h-4 w-4" />
