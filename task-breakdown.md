@@ -11,11 +11,11 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 * [ ] **Task 1.5:** Install Supabase client library (`npm install @supabase/supabase-js`).
 * [ ] **Task 1.6:** Define Database Schema in Supabase (e.g., `registrants` table with columns: `id`, `created_at`, `full_name`, `age`, `church_location`, `assigned_group`, etc.). Set up Row Level Security (RLS) policies appropriately.
 * [ ] **Task 1.7:** Configure Supabase client in Next.js (environment variables for URL and anon key).
-* [ ] **Task 1.8:** Set up basic project structure (folders for components, pages/app router, utils, lib/supabase).
+* [ ] **Task 1.8:** Set up basic project structure (folders for components, app router with /dashboard group, utils, lib/supabase).
 
 **Phase 2: Core Registration Feature (Est. 1 day)**
 
-* [ ] **Task 2.1:** Create the Registration Page UI (`/register` or relevant route in App Router).
+* [ ] **Task 2.1:** Create the Registration Page UI (`/dashboard/register`).
 * [ ] **Task 2.2:** Build the Registration Form component using Shadcn/ui components (Input, Select for location, Button).
     * Include fields: Full Name, Age (Must be 12 or above), Church Location (populate dropdown from list).
     * Add form validation (required fields, age >= 12). Clearly state the age requirement (12+) on the form.
@@ -44,13 +44,13 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 * [ ] **Task 4.2:** Implement logic within the function to fetch all eligible registrants (age >= 12) directly from Supabase using the client library (`supabase.from('registrants').select('*').gte('age', 12)`). Ensure RLS allows admin reads.
 * [ ] **Task 4.3:** Use ExcelJS *client-side* to generate an Excel file buffer/blob from the fetched data.
 * [ ] **Task 4.4:** Trigger a file download in the browser using the generated blob and appropriate file naming.
-* [ ] **Task 4.5:** Add a button/link on the admin page to trigger the export function.
+* [ ] **Task 4.5:** Add a button/link on the admin page/dashboard section to trigger the export function.
 * [ ] **Task 4.6:** Implement separate exports per group (modify Supabase query to filter by `assigned_group`).
 
 **Phase 5: Data Import Feature (Est. 1 day - *Lower Priority*)**
 
 * [ ] **Task 5.1:** Design the expected Excel file structure/template.
-* [ ] **Task 5.2:** Create an Admin Page/Section UI for file upload (e.g., using `<input type="file">`).
+* [ ] **Task 5.2:** Create an Admin Page/Section UI (`/dashboard/admin` or similar) for file upload (e.g., using `<input type="file">`).
 * [ ] **Task 5.3:** Create a client-side function to handle the file selection and processing.
 * [ ] **Task 5.4:** Implement logic within the client-side function to:
     * Read the selected file using the browser's File API.
@@ -63,11 +63,11 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 
 **Phase 6: Admin View & Management (Est. 0.5 days - *Basic version*)**
 
-* [ ] **Task 6.1:** Create a basic Admin Page UI (`/admin`). Secure it using Supabase Auth and RLS, or simple password protection if Auth is too complex for the timeframe.
-* [ ] **Task 6.2:** Fetch and display the list of all *eligible* registrants (age >= 12) directly from Supabase using the client library in a component (Client or Server Component - preferably Client if doing direct client-side fetches). Use Shadcn/ui Table. Ensure RLS allows admin reads.
-* [ ] **Task 6.3:** Add client-side filtering/tabs to view participants by assigned group. Fetch data accordingly from Supabase using the client library.
-* [ ] **Task 6.4:** Add buttons/links to trigger Export and Import client-side functions.
-* [ ] **Task 6.5:** (Optional) Add a button to manually trigger the grouping process (calling the relevant client-side function or Supabase Function).
+* [ ] **Task 6.1:** Create a basic Admin Page UI (e.g., `/dashboard` or `/dashboard/admin`). Secure it using Supabase Auth and RLS, or simple password protection if Auth is too complex for the timeframe. Implement the Shadcn UI Sidebar layout for the dashboard.
+* [ ] **Task 6.2:** Fetch and display the list of all *eligible* registrants (age >= 12) directly from Supabase using the client library in a component on the admin page/dashboard. Use Shadcn/ui Table. Ensure RLS allows admin reads.
+* [ ] **Task 6.3:** Add client-side filtering/tabs to view participants by assigned group on the admin page/dashboard. Fetch data accordingly from Supabase using the client library.
+* [ ] **Task 6.4:** Add buttons/links on the admin page/dashboard to trigger Export and Import client-side functions.
+* [ ] **Task 6.5:** (Optional) Add a button on the admin page/dashboard to manually trigger the grouping process (calling the relevant client-side function or Supabase Function).
 
 **Phase 7: Testing & Deployment (Est. 0.5 days)**
 
