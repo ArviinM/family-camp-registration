@@ -6,7 +6,7 @@ import type { Database } from '../../../src/lib/supabase/database.types'; // Cor
 import { ParticipantTable } from '@/components/participant-table'; // Import reusable component
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button"; // For action buttons
-import { Download, Upload, Users, FileSpreadsheet } from 'lucide-react'; // Icons for buttons and FileSpreadsheet
+import { Download, Upload, Users, FileSpreadsheet, AlertTriangle } from 'lucide-react'; // Icons for buttons and FileSpreadsheet, added AlertTriangle
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { downloadImportTemplate } from '../../../src/lib/excelUtils/template'; /
 import { processRegistrantImport, ImportResult } from '../../../src/lib/excelUtils/import'; // Use alias path if configured
 import { exportParticipantsData } from '../../../src/lib/excelUtils/export'; // Import the export function
 import { useAuth } from '../../../src/context/AuthContext'; // Import useAuth
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added Alert imports
 
 // Define the type for a registrant row we expect to fetch
 type RegistrantRow = Database['public']['Tables']['registrants']['Row'];
@@ -226,11 +227,20 @@ export default function ManageParticipantsPage() {
                     <DialogDescription>
                       Download the template, fill it out, and upload the completed file.
                       Ensure data starts on row 2.
-                      Important: Age must be 12 or older. Gender must be Male or Female.
-                      Location must be selected from the dropdown list provided in the template.
-                      Only registrants meeting these criteria will be imported.
                     </DialogDescription>
                   </DialogHeader>
+                  <Alert variant="destructive" className="mt-2 mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Important Import Rules</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Age must be 12 or older.</li>
+                        <li>Gender must be Male or Female.</li>
+                        <li>Location must match the dropdown list in the template.</li>
+                        <li>Only registrants meeting these criteria will be imported.</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
                   <div className="grid gap-4 py-4">
                     {/* Download Template Button */}
                     <Button variant="secondary" onClick={handleDownloadTemplate}>
