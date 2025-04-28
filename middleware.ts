@@ -45,7 +45,7 @@ export async function middleware(req: NextRequest) {
   console.log("Middleware: getSession returned. Session:", !!session, "Error:", sessionError);
 
   const { pathname } = req.nextUrl;
-  const publicRoutes = ['/', '/login'];
+  const publicRoutes = ['/', '/login', '/logo.png', '/qr.png', '/cover.png'];
 
   // Redirect logic (remains the same)
   if (!session && !publicRoutes.includes(pathname)) {
@@ -78,4 +78,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|api/).*)',
   ],
-}; 
+};
