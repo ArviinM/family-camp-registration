@@ -17,6 +17,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Family Camp Registration",
   description: "Registration system for Family Camp",
+  openGraph: {
+    title: "Laguna District Family Camp 2025",
+    description: "Growing in Faith, Growing Together. Register now!",
+    url: "https://family-camp.arvinrhen.com/",
+    siteName: "Family Camp Registration",
+    images: [
+      {
+        url: "/cover.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
