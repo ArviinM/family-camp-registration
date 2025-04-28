@@ -39,9 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Auth state changed:', event, currentSession);
         const newSession = currentSession;
         const newUser = newSession?.user ?? null;
-        // Get the *current* user state value directly for comparison
-        // Avoid relying on the 'user' state variable from the outer scope
-        // which might be stale within this async callback closure.
+        
         let changed = false;
         setUser(currentUserState => {
             changed = currentUserState?.id !== newUser?.id;

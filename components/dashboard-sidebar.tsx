@@ -55,8 +55,7 @@ export function DashboardSidebar() {
 
   const handleLogout = async () => {
     await signOut();
-    // Redirect to login page after sign out
-    router.push('/login');
+    router.refresh();
   };
 
   const isActive = (href: string) => {
