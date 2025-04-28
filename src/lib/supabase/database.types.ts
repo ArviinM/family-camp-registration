@@ -74,6 +74,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_all_ungrouped_registrants: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       assign_group_to_registrant: {
         Args: { registrant_id_to_assign: number }
         Returns: undefined
