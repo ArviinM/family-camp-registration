@@ -25,9 +25,11 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner"; // For displaying messages
-import { supabase } from '../src/lib/supabase/client'; // Corrected path
-import { CHURCH_LOCATIONS, ChurchLocation } from '../src/lib/constants'; // Corrected path and import type
-import type { Database } from '../src/lib/supabase/database.types'; // Corrected path
+import { supabase } from '@/src/lib/supabase/client'; // Corrected path
+import { CHURCH_LOCATIONS, ChurchLocation } from '@/src/lib/constants'; // Corrected path and import type
+import type { Database } from '@/src/lib/supabase/database.types'; // Corrected path
+import { useAuth } from '../src/context/AuthContext'; // Import useAuth
+import { cn } from '@/lib/utils'; // Try alias path for cn utility
 
 // Define the Zod schema for validation
 const formSchema = z.object({
@@ -62,6 +64,7 @@ interface RegistrationFormProps {
 
 export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { isAdmin, loading: authLoading, user } = useAuth(); // Get auth state
 
   // 1. Define your form.
   const form = useForm<RegistrationFormValues>({
@@ -77,8 +80,14 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
 
   // 2. Define a submit handler.
   async function onSubmit(values: RegistrationFormValues) {
+    // Add extra guard just in case
+    if (!isAdmin) {
+        toast.error("Permission Denied: Only admins can register participants.");
+        return;
+    }
+
     setIsSubmitting(true);
-    console.log("Form submitted:", values);
+    console.log("Form submitted by admin:", values);
 
     // Map form values to Supabase insert type
     // Note: Zod schema keys match Supabase column names here
@@ -90,29 +99,80 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
     };
 
     try {
-      const { error } = await supabase
+      // Insert registrant and select the inserted record (including its ID)
+      const { data: insertData, error: insertError } = await supabase
         .from('registrants')
-        .insert(registrantData);
+        .insert(registrantData)
+        .select()
+        .single(); // Use .single() if you expect only one record
 
-      if (error) {
-        console.error('Supabase insertion error:', error);
-        toast.error(`Registration failed: ${error.message}`);
-      } else {
-        toast.success("Registration successful!");
-        form.reset(); // Reset form fields
-        onSubmitSuccess?.(); // Call success callback if provided
-        // Potentially trigger grouping logic here if needed (Task 3.4 Option A)
+      if (insertError) {
+        console.error('Supabase insertion error:', insertError);
+        toast.error(`Registration failed: ${insertError.message}`);
+        setIsSubmitting(false);
+        return; // Stop execution if insertion fails
       }
+
+      // Check if data was returned and has an ID
+      if (!insertData || !insertData.id) {
+        console.error('Insertion succeeded but no data returned.');
+        toast.error('Registration completed, but failed to get ID for group assignment.');
+        // Still reset form and call success, as registration itself worked
+        form.reset();
+        onSubmitSuccess?.();
+        setIsSubmitting(false);
+        return;
+      }
+
+      const newRegistrantId = insertData.id;
+      toast.success(`Registration successful! (ID: ${newRegistrantId})`);
+
+      // --- Trigger Group Assignment ---
+      // Using the correct function name from functions.sql
+      console.log(`Attempting to assign group for registrant ID: ${newRegistrantId}`);
+      const { error: assignmentError } = await supabase.rpc('assign_group_to_registrant', {
+        registrant_id_to_assign: newRegistrantId // Correct parameter name
+      });
+
+      if (assignmentError) {
+        console.error('Supabase group assignment error:', assignmentError);
+        // Notify user, but don't block success flow as registration is done
+        toast.warning(`Registration complete, but automatic group assignment failed: ${assignmentError.message}`);
+      } else {
+        console.log(`Successfully triggered group assignment for registrant ID: ${newRegistrantId}`);
+        toast.info("Group assignment process initiated."); // Or success if RPC confirms assignment
+      }
+
+      // Reset form and call success callback AFTER attempting assignment
+      form.reset();
+      onSubmitSuccess?.();
+
     } catch (err) {
-      console.error("Unexpected error during submission:", err);
+      console.error("Unexpected error during submission or assignment:", err);
       toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  // Determine if form should be disabled
+  const formDisabled = !isAdmin || authLoading;
+
+  if (authLoading) {
+      return <div className="p-4 text-center">Loading authentication...</div>;
+  }
+
+  if (!user) {
+      return <div className="p-4 text-center text-red-600">Please log in to view the registration form.</div>;
+  }
+
   return (
     <Form {...form}>
+        {!isAdmin && (
+             <p className="mb-4 text-center text-orange-600 bg-orange-100 p-3 rounded-md">
+                Viewing as Member: Registration form submission is disabled.
+             </p>
+        )}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Full Name Field */}
         <FormField
@@ -122,7 +182,7 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="Enter full name" {...field} />
+                <Input placeholder="Enter full name" {...field} disabled={formDisabled} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -213,4 +273,4 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
       </form>
     </Form>
   );
-} 
+}

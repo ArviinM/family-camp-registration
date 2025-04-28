@@ -1,14 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../src/lib/supabase/client'; // Corrected relative path
 import type { Database } from '../../../src/lib/supabase/database.types'; // Corrected relative path
 import { ParticipantTable } from '@/components/participant-table'; // Import reusable component
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button"; // For action buttons
 import { Download, Upload, Users, FileSpreadsheet } from 'lucide-react'; // Icons for buttons and FileSpreadsheet
-import ExcelJS from 'exceljs'; // Import exceljs
-import { saveAs } from 'file-saver'; // Import file-saver
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input"; // Import Input for file selection
+import { Label } from "@/components/ui/label"; // Import Label
+import { toast } from "sonner"; // For feedback
+import { downloadImportTemplate } from '../../../src/lib/excelUtils/template'; // Use alias path if configured
+import { processRegistrantImport, ImportResult } from '../../../src/lib/excelUtils/import'; // Use alias path if configured
+import { exportParticipantsData } from '../../../src/lib/excelUtils/export'; // Import the export function
+import { useAuth } from '../../../src/context/AuthContext'; // Import useAuth
 
 // Define the type for a registrant row we expect to fetch
 type RegistrantRow = Database['public']['Tables']['registrants']['Row'];
@@ -18,194 +32,271 @@ export default function ManageParticipantsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false); // State for export button
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // State for modal
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State for selected file
+  const [isProcessingImport, setIsProcessingImport] = useState(false); // State for import processing
+  const [importResult, setImportResult] = useState<ImportResult | null>(null); // State for import results
 
-  useEffect(() => {
-    async function fetchRegistrants() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Task 6.2: Fetch all *eligible* registrants (age >= 12)
-        const { data, error: fetchError } = await supabase
-          .from('registrants')
-          .select('*')
-          .gte('age', 12) // Filter for age 12 and up
-          .order('created_at', { ascending: false }); // Order by creation time
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+  const { user, isAdmin, loading: authLoading } = useAuth(); // Get auth state and isAdmin flag
 
-        if (fetchError) {
+  // Define fetchRegistrants within component scope
+  const fetchRegistrants = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Task 6.2: Fetch all *eligible* registrants (age >= 12)
+      const { data, error: fetchError } = await supabase
+        .from('registrants')
+        .select('*')
+        .gte('age', 12) // Filter for age 12 and up
+        .order('created_at', { ascending: false }); // Order by creation time
+
+      if (fetchError) {
+        // Handle RLS errors potentially more gracefully
+        if (fetchError.code === '42501') { // permission denied
+          console.error("RLS Error: Permission denied fetching registrants.", fetchError);
+          setError("You don't have permission to view participant data.");
+        } else {
           throw fetchError;
         }
-
-        setRegistrants(data || []);
-      } catch (err: any) {
-        console.error("Error fetching registrants:", err);
-        setError(err.message || "Failed to fetch registrants.");
-        setRegistrants([]);
-      } finally {
-        setLoading(false);
       }
-    }
 
-    fetchRegistrants();
-  }, []);
+      setRegistrants(data || []);
+    } catch (err: any) {
+      console.error("Error fetching registrants:", err);
+      // Avoid setting generic error if RLS error was already set
+      if (!error) {
+        setError(err.message || "Failed to fetch registrants.");
+      }
+      setRegistrants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Only fetch if user is loaded and authenticated (session check might be redundant with middleware)
+    if (!authLoading && user) {
+      fetchRegistrants();
+    }
+    // If auth is done loading and there's no user, clear data/stop loading
+    if (!authLoading && !user) {
+      setLoading(false);
+      setRegistrants([]);
+      setError("Please log in to view participants.");
+    }
+  }, [user, authLoading]); // Depend on user and authLoading state
 
   const handleManualGroupTrigger = async () => {
-      alert("Manual group assignment trigger not implemented yet.");
-      // TODO: Implement Task 6.5 - Call grouping logic for all ungrouped
-      // e.g., supabase.rpc('assign_all_ungrouped_registrants') or client-side loop
+    if (!isAdmin) {
+      toast.error("Only admins can trigger group assignments.");
+      return;
+    }
+    alert("Manual group assignment trigger not implemented yet.");
+    // TODO: Implement Task 6.5 - Call grouping logic for all ungrouped
+    // e.g., supabase.rpc('assign_all_ungrouped_registrants') or client-side loop
   };
 
   const handleExport = async () => {
+    if (!isAdmin) {
+      toast.error("Only admins can export data.");
+      return;
+    }
     setIsExporting(true);
     try {
-      if (registrants.length === 0 && !loading) {
-          alert("No participant data to export.");
-          return;
-      }
-
-      const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'Camp Registration System';
-      workbook.created = new Date();
-      workbook.modified = new Date();
-
-      const headers = [
-          { header: 'Full Name', key: 'full_name', width: 30 },
-          { header: 'Age', key: 'age', width: 10 },
-          { header: 'Gender', key: 'gender', width: 15 },
-          { header: 'Location', key: 'church_location', width: 25 },
-          { header: 'Assigned Group', key: 'assigned_group', width: 15 }
-      ];
-
-      // --- All Participants Sheet ---
-      const allSheet = workbook.addWorksheet('All Participants');
-      // 1. Define column structure (keys, widths) - headers might go to Row 1 initially
-      allSheet.columns = headers;
-      // 2. Add Title Row (merged, styled) - explicitly sets Row 1 content
-      allSheet.mergeCells('A1:E1');
-      const titleCellAll = allSheet.getCell('A1');
-      titleCellAll.value = 'Laguna District Family Camp - All Participants (Age 12+)';
-      titleCellAll.font = { name: 'Calibri', size: 16, bold: true };
-      titleCellAll.alignment = { vertical: 'middle', horizontal: 'center' };
-      // 3. Add empty row (becomes Row 2)
-      allSheet.addRow([]);
-      // 4. Add actual Header text row (becomes Row 3)
-      const headerRowAll = allSheet.addRow(headers.map(h => h.header));
-      headerRowAll.font = { bold: true }; // Make this specific row bold
-      // 5. Add data rows (starting from Row 4)
-      registrants.forEach(reg => {
-          allSheet.addRow({
-              ...reg,
-              assigned_group: reg.assigned_group ?? 'None'
-          });
-      });
-
-      // --- Group Sheets ---
-      const groups = [1, 2, 3, 4, 5];
-      groups.forEach(groupNum => {
-        const groupRegistrants = registrants.filter(reg => reg.assigned_group === groupNum);
-        if (groupRegistrants.length === 0) return; // Skip empty groups
-
-        const sheetName = `Group ${groupNum}`;
-        const sheet = workbook.addWorksheet(sheetName);
-        const groupHeaders = headers.filter(h => h.key !== 'assigned_group');
-
-        // 1. Define column structure
-        sheet.columns = groupHeaders;
-        // 2. Add Title Row
-        sheet.mergeCells('A1:D1');
-        const titleCellGroup = sheet.getCell('A1');
-        titleCellGroup.value = `Laguna District Family Camp - ${sheetName} Participants`;
-        titleCellGroup.font = { name: 'Calibri', size: 16, bold: true };
-        titleCellGroup.alignment = { vertical: 'middle', horizontal: 'center' };
-        // 3. Add empty row
-        sheet.addRow([]);
-        // 4. Add actual Header text row
-        const headerRowGroup = sheet.addRow(groupHeaders.map(h => h.header));
-        headerRowGroup.font = { bold: true };
-        // 5. Add data rows
-        groupRegistrants.forEach(reg => {
-          sheet.addRow(reg); // Note: Still might trigger linter warning
-        });
-      });
-
-      // --- Unassigned Sheet ---
-      const unassignedRegistrants = registrants.filter(reg => reg.assigned_group === null);
-      if (unassignedRegistrants.length > 0) {
-          const unassignedSheet = workbook.addWorksheet('Unassigned');
-          const unassignedHeaders = headers.filter(h => h.key !== 'assigned_group');
-
-          // 1. Define column structure
-          unassignedSheet.columns = unassignedHeaders;
-          // 2. Add Title Row
-          unassignedSheet.mergeCells('A1:D1');
-          const titleCellUnassigned = unassignedSheet.getCell('A1');
-          titleCellUnassigned.value = 'Laguna District Family Camp - Unassigned Participants (Age 12+)';
-          titleCellUnassigned.font = { name: 'Calibri', size: 16, bold: true };
-          titleCellUnassigned.alignment = { vertical: 'middle', horizontal: 'center' };
-          // 3. Add empty row
-          unassignedSheet.addRow([]);
-          // 4. Add actual Header text row
-          const headerRowUnassigned = unassignedSheet.addRow(unassignedHeaders.map(h => h.header));
-          headerRowUnassigned.font = { bold: true };
-          // 5. Add data rows
-          unassignedRegistrants.forEach(reg => {
-              unassignedSheet.addRow(reg); // Note: Still might trigger linter warning
-          });
-      }
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const date = new Date().toISOString().split('T')[0];
-      saveAs(blob, `family-camp-export-${date}.xlsx`);
-
-    } catch (exportError) {
-      console.error("Export Error:", exportError);
-      alert("An error occurred during export. Please check the console.");
+      await exportParticipantsData(registrants);
+    } catch (err) {
+      // Error handling is now mostly within the utility function,
+      // but you could add more specific component-level handling here if needed.
+      console.error("Caught export error in component:", err);
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleImport = () => {
-      alert("Import function not implemented yet.");
-      // TODO: Implement Task 6.4 / Phase 5
+  // Use the imported function for downloading the template
+  const handleDownloadTemplate = async () => {
+    await downloadImportTemplate();
   };
+
+  // Function to handle file selection
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setImportResult(null); // Clear previous results when new file selected
+    if (file) {
+      // Basic validation (e.g., check file type)
+      if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        toast.error("Invalid file type. Please upload an Excel (.xlsx) file.");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+        return;
+      }
+      setSelectedFile(file);
+      toast.info(`File "${file.name}" selected.`);
+    } else {
+      setSelectedFile(null);
+    }
+  };
+
+  // Function to trigger the import process using the utility function
+  const handleProcessImport = async () => {
+    if (!isAdmin) {
+      toast.error("Only admins can import data.");
+      return;
+    }
+    if (!selectedFile) {
+      toast.warning("Please select a file to upload.");
+      return;
+    }
+    setIsProcessingImport(true);
+    setImportResult(null); // Clear previous results
+
+    const result = await processRegistrantImport(selectedFile);
+    setImportResult(result); // Store the result
+
+    setIsProcessingImport(false);
+
+    // If import was successful and inserted/updated rows, refresh the participant list
+    if (result.success && result.insertedCount > 0) {
+      toast.info("Refreshing participant list...");
+      await fetchRegistrants(); // Re-fetch data
+      // Optionally close modal on success?
+      // setIsImportModalOpen(false);
+    }
+  };
+
+  // Reset file state when modal is closed
+  useEffect(() => {
+    if (!isImportModalOpen) {
+      setSelectedFile(null);
+      setImportResult(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [isImportModalOpen]);
+
+  // Show loading state while auth is resolving
+  if (authLoading) {
+    return <div className="py-6 text-center">Loading user data...</div>;
+  }
 
   return (
     <div className="py-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-           <div>
-             <CardTitle className="text-2xl font-bold">Manage Participants</CardTitle>
-             <CardDescription>View and manage all eligible camp registrants.</CardDescription>
-           </div>
-           <div className="flex space-x-2">
-                <Button variant="outline" size="sm" onClick={handleImport}>
+          <div>
+            <CardTitle className="text-2xl font-bold">Manage Participants</CardTitle>
+            <CardDescription>View, export, and import eligible camp registrants (Age 12+).</CardDescription>
+          </div>
+          {/* Conditionally render buttons based on admin role */}
+          {isAdmin && (
+            <div className="flex space-x-2">
+              {/* Import Button with Dialog */}
+              <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
                     <Upload className="mr-2 h-4 w-4" /> Import
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExport}
-                    disabled={isExporting || loading}
-                >
-                    {isExporting ? (
-                       <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                       <Download className="mr-2 h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Import Participants from Excel</DialogTitle>
+                    <DialogDescription>
+                      Download the template, fill it out (ensure Location is from dropdown), and upload.
+                      Only registrants aged 12+ will be imported.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    {/* Download Template Button */}
+                    <Button variant="secondary" onClick={handleDownloadTemplate}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Template (.xlsx)
+                    </Button>
+                    {/* File Input */}
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                      <Label htmlFor="excel-file">Upload Completed File</Label>
+                      <Input
+                        id="excel-file"
+                        type="file"
+                        accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        onChange={handleFileChange}
+                        ref={fileInputRef} // Assign ref
+                        disabled={isProcessingImport}
+                      />
+                      {selectedFile && !importResult && (
+                        <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>
+                      )}
+                    </div>
+                    {/* Display Import Results */}
+                    {importResult && (
+                      <div className="mt-4 space-y-2 rounded-md border p-4">
+                        <p className={`text-sm font-semibold ${importResult.success ? 'text-green-600' : 'text-red-600'}`}> 
+                          {importResult.success ? 'Import Successful' : 'Import Finished with Issues'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{importResult.message}</p>
+                        {importResult.errors && importResult.errors.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-destructive">Errors ({importResult.errors.length}):</p>
+                            <ul className="list-disc pl-4 max-h-20 overflow-y-auto">
+                              {importResult.errors.slice(0, 5).map((err: string, index: number) => (
+                                <li key={index} className="text-xs text-destructive">{err}</li>
+                              ))}
+                              {importResult.errors.length > 5 && <li className="text-xs text-destructive italic">... (more errors in console)</li>}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {isExporting ? 'Exporting...' : 'Export'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleManualGroupTrigger}>
-                    <Users className="mr-2 h-4 w-4" /> Assign Groups
-                </Button>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      onClick={handleProcessImport}
+                      disabled={!selectedFile || isProcessingImport}
+                    >
+                      {isProcessingImport ? (
+                        <>
+                          <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload & Process File
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Export Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting || loading || registrants.length === 0} // Disable if no data
+              >
+                {isExporting ? (
+                  <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isExporting ? 'Exporting...' : 'Export'}
+              </Button>
+              {/* Assign Groups Button */}
+              <Button variant="outline" size="sm" onClick={handleManualGroupTrigger}>
+                <Users className="mr-2 h-4 w-4" /> Assign Groups
+              </Button>
             </div>
+          )}
         </CardHeader>
         <CardContent>
           {/* TODO: Add filtering/tabs for groups (Task 6.3) */}
           
-          {loading && <p>Loading registrants...</p>}
+          {(loading || authLoading) && <p>Loading registrants...</p>}
           {error && <p className="text-red-600">Error: {error}</p>}
-          {!loading && !error && (
+          {!loading && !authLoading && !error && (
             <ParticipantTable
               registrants={registrants}
               caption="A list of all registered participants (Age 12+)."
