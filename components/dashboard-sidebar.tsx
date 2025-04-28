@@ -82,11 +82,9 @@ export function DashboardSidebar() {
   };
 
   return (
-    <Sidebar className="w-64 flex-shrink-0 border-r p-4 flex flex-col bg-background">
-      {/* <SidebarHeader> Optional: Add logo or header content </SidebarHeader> */}
+    <Sidebar className="w-64 flex-shrink-0 border-r p-4 flex flex-col">
       <SidebarHeader>
         <h2 className="text-xl font-bold tracking-tight text-primary">Family Camp Admin</h2>
-        {/* User email removed from here */}
       </SidebarHeader>
       <SidebarContent className="flex-grow">
         {menuItems.map((group) => (
