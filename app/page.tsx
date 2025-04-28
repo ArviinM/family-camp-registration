@@ -28,7 +28,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResult, setSearchResult] = useState<string | null>(null);
+  const [searchResult, setSearchResult] = useState<RegistrantRow[] | string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -79,23 +79,27 @@ export default function Home() {
   // --- Placeholder Functions (to be implemented) ---
   const handleSearch = () => {
     setIsSearching(true);
-    setSearchResult(null);
-    if (!searchTerm) {
+    setSearchResult(null); // Reset previous results
+    if (!searchTerm.trim()) { // Check for empty or whitespace-only search term
         setSearchResult("Please enter a name to search.");
         setIsSearching(false);
         return;
     }
     console.log(`Searching for: ${searchTerm}`);
-    setTimeout(() => { 
-        const found = registrants.find(r => r.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
-        if (found) {
-            const groupName = found.assigned_group === null ? 'Unassigned' : `Group ${found.assigned_group}`;
-            setSearchResult(`${found.full_name} is in ${groupName}.`);
+    // Simulate network delay for feedback
+    setTimeout(() => {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const foundRegistrants = registrants.filter(r => 
+            r.full_name.toLowerCase().includes(lowerCaseSearchTerm)
+        );
+
+        if (foundRegistrants.length > 0) {
+            setSearchResult(foundRegistrants); // Store the array of found registrants
         } else {
             setSearchResult(`Participant "${searchTerm}" not found.`);
         }
         setIsSearching(false);
-    }, 500);
+    }, 500); // Short delay
   };
 
   const handleGroupExport = async () => {
@@ -214,10 +218,30 @@ export default function Home() {
                         Search
                     </Button>
                 </div>
+                {/* Display Search Results */}
                 {searchResult && (
-                    <div className={`mt-3 text-center text-sm p-2 rounded-md ${searchResult.includes('not found') || searchResult.includes('Please enter') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                        {searchResult.includes('not found') || searchResult.includes('Please enter') ? <UserX className="inline h-4 w-4 mr-1"/> : <UserCheck className="inline h-4 w-4 mr-1"/>}
-                        {searchResult}
+                    <div className="mt-4 max-w-sm mx-auto">
+                        {typeof searchResult === 'string' ? (
+                            // Display messages (e.g., "not found", "please enter")
+                            <div className={`text-center text-sm p-2 rounded-md ${searchResult.includes('not found') || searchResult.includes('Please enter') ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {searchResult.includes('not found') || searchResult.includes('Please enter') ? <UserX className="inline h-4 w-4 mr-1"/> : <Info className="inline h-4 w-4 mr-1"/>}
+                                {searchResult}
+                            </div>
+                        ) : (
+                            // Display list of found participants
+                            <div className="border rounded-md bg-green-50 shadow-sm">
+                                <p className="text-sm font-medium text-green-800 p-2 border-b bg-green-100 rounded-t-md flex items-center">
+                                    <UserCheck className="inline h-4 w-4 mr-2 text-green-700"/> Found {searchResult.length} participant(s):
+                                </p>
+                                <ul className="divide-y divide-green-100 text-sm p-2 max-h-40 overflow-y-auto">
+                                    {searchResult.map(registrant => (
+                                        <li key={registrant.id} className="py-1.5 px-1 text-gray-800">
+                                            <span className="font-medium">{registrant.full_name}</span> - {registrant.assigned_group === null ? 'Unassigned' : `Group ${registrant.assigned_group}`}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
