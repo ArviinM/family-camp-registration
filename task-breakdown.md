@@ -58,7 +58,7 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
     * Iterate through rows, validating data and **filtering out rows where age < 12.**
     * Prepare an array of valid registrant objects.
 * [X] **Task 5.5:** Perform batch insert/upsert directly to Supabase using the client library (`supabase.from('registrants').upsert(validRegistrants)`). Handle potential errors and limits. Ensure RLS allows admin inserts/upserts.
-* [X] **Task 5.6:** Trigger the grouping algorithm (`assign_all_ungrouped_registrants` RPC) for newly imported/upserted users from the client-side after successful import.
+* [ ] **Task 5.6:** ~~Trigger the grouping algorithm (`assign_all_ungrouped_registrants` RPC) for newly imported/upserted users from the client-side after successful import.~~ **(Removed - Group assignment is now manual via Task 6.5)**
 * [X] **Task 5.7:** Provide feedback to the admin on import success/failure/rows processed/skipped directly in the UI.
 
 **Phase 6: Admin View & Management (Est. 0.5-1 day - *Refined*)**
@@ -76,7 +76,7 @@ This breakdown outlines the key tasks required to build the Family Camp Registra
 * [X] **Task 6.5:** Add Admin Action Buttons (on relevant pages, e.g., `/dashboard/participants`).
     * Button to trigger Export (Phase 4).
     * Button to trigger Import (Phase 5).
-    * Button to manually trigger group assignment for all ungrouped participants (using `assign_all_ungrouped_registrants` RPC).
+    * Button to manually trigger group assignment for **all** ungrouped participants (using `assign_all_ungrouped_registrants` RPC). **(This is the primary assignment trigger)**
 * [ ] **Task 6.6:** (Optional) Secure the `/dashboard` routes (e.g., using Supabase Auth + RLS, or simple password protection if time-constrained).
 
 **Phase 7: Testing & Deployment (Est. 0.5 days)**

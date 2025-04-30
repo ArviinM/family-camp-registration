@@ -227,6 +227,7 @@ export default function ManageParticipantsPage() {
                     <DialogDescription>
                       Download the template, fill it out, and upload the completed file.
                       Ensure data starts on row 2.
+                      Import all necessary files first, then click the main 'Assign Groups' button.
                     </DialogDescription>
                   </DialogHeader>
                   <Alert variant="destructive">

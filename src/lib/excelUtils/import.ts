@@ -159,31 +159,12 @@ export const processRegistrantImport = async (file: File): Promise<ImportResult>
             throw new Error(`Database error during upsert: ${upsertError.message}`);
         }
 
-        result.insertedCount = count ?? 0; // `count` reflects rows inserted/updated by upsert
+        result.insertedCount = count ?? 0;
         result.success = true;
         result.message = `Import finished. Processed: ${result.processedRows}, Upserted/Updated: ${result.insertedCount}, Skipped: ${result.skippedCount}.`;
 
-        // --- Trigger Group Assignment for newly imported/updated --- 
-        if (result.insertedCount > 0) {
-             console.log(`Attempting to trigger group assignment for ${result.insertedCount} processed participants...`);
-             toast.info("Attempting automatic group assignment for imported participants...");
-             const { data: assignmentData, error: assignmentError } = await supabase.rpc('assign_all_ungrouped_registrants');
-
-             if (assignmentError) {
-                 console.error("Supabase automatic group assignment error after import:", assignmentError);
-                 // Append warning to the main success message, but don't fail the import
-                 result.message += ` Automatic group assignment failed: ${assignmentError.message}`;
-                 toast.warning(`Import succeeded, but automatic group assignment failed: ${assignmentError.message}`);
-             } else {
-                 console.log(`Automatic group assignment process triggered. Attempted: ${assignmentData ?? 0}`);
-                 toast.success(`Automatic group assignment triggered successfully. Attempted: ${assignmentData ?? 0}`);
-             }
-         }
-
-        // --- 7. Optional: Trigger Group Assignment for new imports --- (OLD COMMENT)
-        // This is complex with upsert. A safer approach is manual trigger after import.
-        // console.log("Group assignment for imported users needs to be triggered manually or via a separate process.");
-        // toast.info("Remember to manually assign groups if needed for newly imported participants.");
+        // Update message to reflect manual step needed
+        toast.info("Remember to manually assign groups using the 'Assign Groups' button after importing all files.");
 
     } else {
         // No valid registrants found, but processing might have occurred
