@@ -116,8 +116,7 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
       // Check if data was returned and has an ID
       if (!insertData || !insertData.id) {
         console.error('Insertion succeeded but no data returned.');
-        toast.error('Registration completed, but failed to get ID for group assignment.');
-        // Still reset form and call success, as registration itself worked
+        toast.error('Registration completed, but could not verify registrant ID.');
         form.reset();
         onSubmitSuccess?.();
         setIsSubmitting(false);
@@ -125,31 +124,15 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
       }
 
       const newRegistrantId = insertData.id;
-      toast.success(`Registration successful! (ID: ${newRegistrantId})`);
+      toast.success(`Registration successful! (ID: ${newRegistrantId}). Group will be assigned later.`);
 
-      // --- Trigger Group Assignment ---
-      // Using the correct function name from functions.sql
-      console.log(`Attempting to assign group for registrant ID: ${newRegistrantId}`);
-      const { error: assignmentError } = await supabase.rpc('assign_group_to_registrant', {
-        registrant_id_to_assign: newRegistrantId // Correct parameter name
-      });
-
-      if (assignmentError) {
-        console.error('Supabase group assignment error:', assignmentError);
-        // Notify user, but don't block success flow as registration is done
-        toast.warning(`Registration complete, but automatic group assignment failed: ${assignmentError.message}`);
-      } else {
-        console.log(`Successfully triggered group assignment for registrant ID: ${newRegistrantId}`);
-        toast.info("Group assignment process initiated."); // Or success if RPC confirms assignment
-      }
-
-      // Reset form and call success callback AFTER attempting assignment
+      // Reset form and call success callback
       form.reset();
       onSubmitSuccess?.();
 
     } catch (err) {
-      console.error("Unexpected error during submission or assignment:", err);
-      toast.error("An unexpected error occurred. Please try again.");
+      console.error("Unexpected error during submission:", err);
+      toast.error("An unexpected error occurred during registration.");
     } finally {
       setIsSubmitting(false);
     }

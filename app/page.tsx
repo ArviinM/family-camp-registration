@@ -121,13 +121,13 @@ export default function Home() {
       <Card className="w-full max-w-5xl shadow-lg mb-8 overflow-hidden bg-white">
         {/* Cover Image added directly inside Card, before CardContent */}
         <div className="w-full">
-            <Image 
+        <Image
                 src="/cover.png" 
                 alt="Laguna District Family Camp 2025 Cover" 
                 width={1600} // Example width, adjust as needed based on original image resolution
                 height={600} // Example height, adjust maintaining aspect ratio
                 className="w-full h-auto object-cover" // Cover the area
-                priority
+          priority
             />
         </div>
         
@@ -157,7 +157,7 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">Villa Adelina, San Roque, Victoria City, Laguna</p>
                     {/* QR Code */}
                     <div className="mt-4 flex flex-col items-center space-y-2">
-                         <Image 
+          <Image
                            src="/qr.png" // IMPORTANT: Replace with QR code path in /public
                            alt="Location Map QR Code" 
                            width={100} 
