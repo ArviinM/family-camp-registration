@@ -27,6 +27,7 @@ CREATE TYPE public.church_location_enum AS ENUM (
     'Romblon',
     'San Pablo',
     'Silang',
+    'Sta. Cruz',
     'Sta. Rosa',
     'Victoria'
 );

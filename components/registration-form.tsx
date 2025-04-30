@@ -126,8 +126,11 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
       const newRegistrantId = insertData.id;
       toast.success(`Registration successful! (ID: ${newRegistrantId}). Group will be assigned later.`);
 
-      // Reset form and call success callback
+      // Reset form and call success callback AFTER attempting assignment
       form.reset();
+      // Explicitly reset the Select field's value using an empty string
+      form.setValue('church_location', '' as any, { shouldValidate: false, shouldDirty: false, shouldTouch: false }); // Using empty string, cast as any to bypass strict enum type for reset
+      form.setValue('gender', 'Male', { shouldValidate: false, shouldDirty: false, shouldTouch: false }); // Using empty string, cast as any to bypass strict enum type for reset
       onSubmitSuccess?.();
 
     } catch (err) {
@@ -230,7 +233,11 @@ export function RegistrationForm({ onSubmitSuccess }: RegistrationFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Church Location</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select 
+                onValueChange={field.onChange} 
+                value={field.value || ""}
+                disabled={formDisabled}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your church location" />

@@ -16,9 +16,10 @@ export const CHURCH_LOCATIONS = [
   'Romblon',
   'San Pablo',
   'Silang',
+  'Sta. Cruz',
   'Sta. Rosa',
   'Victoria'
 ] as const; // Use 'as const' for better type inference
 
 // Type helper if needed elsewhere, derived from the const
-export type ChurchLocation = typeof CHURCH_LOCATIONS[number]; 
+export type ChurchLocation = typeof CHURCH_LOCATIONS[number];
